@@ -4,9 +4,9 @@ import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
-  private client: Redis;
-  private subscriber: Redis;
-  private publisher: Redis;
+  private client!: Redis;
+  private subscriber!: Redis;
+  private publisher!: Redis;
   private readonly channelHandlers = new Map<string, (message: string) => void>();
   private messageListenerAttached = false;
 

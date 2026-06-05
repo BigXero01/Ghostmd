@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { Portfolio } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
 import { AlgoService } from '../algo/algo.service';
@@ -32,7 +33,7 @@ export class CompoundingService {
     // Process each portfolio independently so a single failure does not
     // prevent the remaining portfolios from receiving their epoch ROI.
     await Promise.all(
-      portfolios.map(async (portfolio) => {
+      portfolios.map(async (portfolio: Portfolio) => {
         try {
           await this.portfolioService.applyEpochRoi(portfolio.id, roi);
 

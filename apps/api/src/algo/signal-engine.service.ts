@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { MarketDataService } from './market-data.service';
 
 @Injectable()
 export class SignalEngineService {
-  constructor(private marketData: MarketDataService) {}
-
   async calculateEpochRoi(): Promise<number> {
     const baseRoi = 0.0025;
     const variance = (Math.random() - 0.3) * 0.001;

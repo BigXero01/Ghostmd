@@ -20,7 +20,7 @@ import { TelemetryService } from './telemetry.service';
 })
 export class AlgoGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   constructor(
     private jwtService: JwtService,

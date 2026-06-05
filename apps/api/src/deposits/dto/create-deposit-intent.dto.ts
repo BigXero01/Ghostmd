@@ -4,5 +4,5 @@ export class CreateDepositIntentDto {
   @IsNumber()
   @Min(25)
   @Max(100000)
-  amountUsd: number;
+  amountUsd!: number;
 }
