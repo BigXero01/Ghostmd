@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --ink: #080610;
+    --surface: #14101f;
+    --panel: #1a1528;
+    --bone: #e8e0f0;
+    --purple: #9b6dff;
+    --green: #6ee84a;
+    --red: #e05555;
+  }
+
+  * {
+    border-color: rgba(155, 109, 255, 0.15);
+  }
+
+  body {
+    background-color: var(--ink);
+    color: var(--bone);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--surface);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(155, 109, 255, 0.4);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(155, 109, 255, 0.7);
+  }
+
+  ::selection {
+    background: rgba(155, 109, 255, 0.3);
+    color: var(--bone);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-panel/80 backdrop-blur-md border border-purple/20 rounded-xl shadow-glass;
+  }
+
+  .glow-border {
+    @apply border border-purple/40 shadow-glow-sm;
+  }
+
+  .btn-primary {
+    @apply bg-purple hover:bg-purple-dark text-white font-heading font-semibold px-6 py-3 rounded-lg transition-all duration-200 hover:shadow-glow-purple disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply border border-purple/30 hover:border-purple/60 text-bone/80 hover:text-bone px-6 py-3 rounded-lg transition-all duration-200;
+  }
+
+  .input-ghost {
+    @apply bg-surface/50 border border-purple/20 focus:border-purple/60 text-bone placeholder:text-bone/30 px-4 py-3 rounded-lg outline-none transition-all duration-200 w-full font-mono text-sm;
+  }
+
+  .scanline-overlay {
+    @apply pointer-events-none fixed inset-0 z-50 overflow-hidden opacity-[0.03];
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.5) 2px,
+      rgba(0, 0, 0, 0.5) 4px
+    );
+  }
+
+  .dot-grid-bg {
+    @apply bg-dot-grid bg-ink;
+    background-size: 24px 24px;
+  }
+
+  .terminal-text {
+    @apply font-mono text-green text-sm leading-relaxed;
+  }
+
+  .label-ghost {
+    @apply text-bone/60 text-xs font-mono uppercase tracking-widest;
+  }
+}
+
+@layer utilities {
+  .text-glow-purple {
+    text-shadow: 0 0 20px rgba(155, 109, 255, 0.8), 0 0 40px rgba(155, 109, 255, 0.4);
+  }
+
+  .text-glow-green {
+    text-shadow: 0 0 20px rgba(110, 232, 74, 0.8), 0 0 40px rgba(110, 232, 74, 0.4);
+  }
+}
