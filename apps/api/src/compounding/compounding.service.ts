@@ -18,37 +18,51 @@ export class CompoundingService {
 
   @Cron('0 */6 * * *')
   async runEpoch() {
-    this.logger.log('Starting compounding epoch');
+    const epochId = `epoch_${Date.now()}`;
+    this.logger.log(`Starting compounding epoch ${epochId}`);
 
     const roi = await this.algoService.getEpochRoi();
     const portfolios = await this.prisma.portfolio.findMany({
       where: { balance: { gt: 0 } },
     });
 
-    const epochId = `epoch_${Date.now()}`;
-    const startTime = Date.now();
+    let succeeded = 0;
+    let failed = 0;
 
+    // Process each portfolio independently so a single failure does not
+    // prevent the remaining portfolios from receiving their epoch ROI.
     await Promise.all(
       portfolios.map(async (portfolio) => {
-        await this.portfolioService.applyEpochRoi(portfolio.id, roi);
+        try {
+          await this.portfolioService.applyEpochRoi(portfolio.id, roi);
 
-        const updated = await this.prisma.portfolio.findUnique({
-          where: { id: portfolio.id },
-        });
-
-        if (updated) {
-          this.telemetry.emitToUser(portfolio.userId, 'epoch_complete', {
-            epochId,
-            roi,
-            newBalance: updated.balance,
-            timestamp: Date.now(),
+          const updated = await this.prisma.portfolio.findUnique({
+            where: { id: portfolio.id },
           });
 
-          this.telemetry.emitToUser(portfolio.userId, 'portfolio_update', updated);
+          if (updated) {
+            this.telemetry.emitToUser(portfolio.userId, 'epoch_complete', {
+              epochId,
+              roi,
+              newBalance: updated.balance,
+              timestamp: Date.now(),
+            });
+            this.telemetry.emitToUser(portfolio.userId, 'portfolio_update', updated);
+          }
+
+          succeeded++;
+        } catch (err) {
+          failed++;
+          this.logger.error(
+            `Epoch ${epochId}: failed to apply ROI to portfolio ${portfolio.id}: ${(err as Error).message}`,
+          );
         }
       }),
     );
 
-    this.logger.log(`Epoch ${epochId} complete. ROI: ${(roi * 100).toFixed(4)}%. Portfolios: ${portfolios.length}`);
+    this.logger.log(
+      `Epoch ${epochId} complete. ROI: ${(roi * 100).toFixed(4)}%. ` +
+        `Succeeded: ${succeeded}, Failed: ${failed}`,
+    );
   }
 }

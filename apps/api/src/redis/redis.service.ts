@@ -7,6 +7,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis;
   private subscriber: Redis;
   private publisher: Redis;
+  private readonly channelHandlers = new Map<string, (message: string) => void>();
+  private messageListenerAttached = false;
 
   constructor(private config: ConfigService) {}
 
@@ -58,9 +60,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async subscribe(channel: string, handler: (message: string) => void): Promise<void> {
+    this.channelHandlers.set(channel, handler);
+    if (!this.messageListenerAttached) {
+      this.messageListenerAttached = true;
+      this.subscriber.on('message', (ch, msg) => {
+        this.channelHandlers.get(ch)?.(msg);
+      });
+    }
     await this.subscriber.subscribe(channel);
-    this.subscriber.on('message', (ch, msg) => {
-      if (ch === channel) handler(msg);
-    });
   }
 }

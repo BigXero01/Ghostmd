@@ -79,14 +79,27 @@ export class DepositsService {
   }
 
   private async processConfirmedDeposit(depositId: string, userId: string, amount: number) {
-    await this.prisma.$transaction([
-      this.prisma.deposit.update({
-        where: { id: depositId },
+    // Single transaction: status update + portfolio credit are atomic.
+    // The updateMany with status filter acts as a compare-and-swap guard —
+    // if a concurrent call already flipped the row to CONFIRMED, count === 0
+    // and we skip the credit, preventing double-crediting.
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.deposit.updateMany({
+        where: { id: depositId, status: { not: 'CONFIRMED' } },
         data: { status: 'CONFIRMED', confirmedAt: new Date() },
-      }),
-    ]);
+      });
 
-    await this.portfolioService.creditBalance(userId, amount);
+      if (count === 0) return; // already confirmed by a concurrent call
+
+      await tx.portfolio.update({
+        where: { userId },
+        data: {
+          balance: { increment: amount },
+          totalDeposited: { increment: amount },
+        },
+      });
+    });
+
     return { success: true };
   }
 

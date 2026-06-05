@@ -6,15 +6,17 @@ export class WithdrawalsService {
   constructor(private prisma: PrismaService) {}
 
   async requestWithdrawal(userId: string, amountUsd: number) {
-    const portfolio = await this.prisma.portfolio.findUnique({ where: { userId } });
-    if (!portfolio) throw new BadRequestException('Portfolio not found');
-
-    const balance = parseFloat(portfolio.balance.toString());
-    if (amountUsd > balance) {
-      throw new BadRequestException('Insufficient balance');
-    }
-
     return this.prisma.$transaction(async (tx) => {
+      // Re-read balance inside the transaction with a row-level lock so
+      // concurrent withdrawals cannot both pass the balance check.
+      const portfolio = await tx.portfolio.findUnique({ where: { userId } });
+      if (!portfolio) throw new BadRequestException('Portfolio not found');
+
+      const balance = parseFloat(portfolio.balance.toString());
+      if (amountUsd > balance) {
+        throw new BadRequestException('Insufficient balance');
+      }
+
       await tx.portfolio.update({
         where: { userId },
         data: { balance: { decrement: amountUsd } },

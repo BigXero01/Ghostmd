@@ -44,6 +44,7 @@ api.interceptors.response.use(
       } catch {
         localStorage.removeItem('ghostmd-auth');
         if (typeof window !== 'undefined') window.location.href = '/auth/login';
+        return Promise.reject(error);
       }
     }
     return Promise.reject(error);
