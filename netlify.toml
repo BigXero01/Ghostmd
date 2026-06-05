@@ -1,0 +1,16 @@
+[build]
+  # Install the full npm workspace at the repo root before building so that
+  # workspace dependencies (e.g. `next` for @ghostmd/web) are guaranteed to be
+  # present in node_modules/.bin. This prevents "next: not found" when Netlify
+  # restores a partial/cached node_modules for the monorepo package.
+  command = "npm install && turbo run build --filter @ghostmd/web"
+  publish = "apps/web/.next"
+
+# Serverless auth backend (netlify/functions/auth.mts) backed by Netlify
+# Database. Serves the frontend's /api/auth/* calls on the Netlify deployment,
+# where the standalone NestJS API server is not available.
+[functions]
+  directory = "netlify/functions"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

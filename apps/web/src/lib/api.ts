@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// When NEXT_PUBLIC_API_URL is set (e.g. the standalone API server), use it.
+// Otherwise default to the same-origin `/api` path, which is served by the
+// Netlify Functions auth backend on the Netlify deployment.
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
   withCredentials: true,
 });
 
@@ -29,7 +32,7 @@ api.interceptors.response.use(
         const refreshToken = stored ? JSON.parse(stored)?.state?.refreshToken : null;
         if (!refreshToken) throw new Error('No refresh token');
         const { data } = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/auth/refresh`,
+          `${process.env.NEXT_PUBLIC_API_URL || '/api'}/auth/refresh`,
           { refreshToken },
         );
         const cur = localStorage.getItem('ghostmd-auth');
