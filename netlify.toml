@@ -1,0 +1,57 @@
+# Netlify configuration for GhostMD — Phantom Markets Division
+# The NestJS API (apps/api) is NOT deployed; all backend logic lives in
+# Next.js Route Handlers and Netlify Scheduled Functions.
+
+[build]
+  base    = "apps/web"
+  command = "npm ci && npx prisma generate && next build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# @netlify/plugin-nextjs handles ISR, image optimisation, and streaming.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ── Functions ──────────────────────────────────────────────────────────────────
+[functions]
+  directory    = "netlify/functions"
+  node_bundler = "esbuild"
+
+  # Prisma generates a native binary query engine; include it in every bundle.
+  included_files = ["node_modules/.prisma/client/**"]
+
+# ── Scheduled Functions ────────────────────────────────────────────────────────
+# compound-epoch: applies ROI to every portfolio with a non-zero balance.
+# Schedule matches the original @Cron('0 */6 * * *') in NestJS.
+[[scheduled-functions]]
+  name     = "compound-epoch"
+  schedule = "0 */6 * * *"
+
+# algo-tick: generates simulated trade/signal events every minute so the
+# /api/algo/feed polling endpoint always has fresh data.
+[[scheduled-functions]]
+  name     = "algo-tick"
+  schedule = "* * * * *"
+
+# ── Redirects ──────────────────────────────────────────────────────────────────
+# Strip the old /api prefix if any external links point at the NestJS backend.
+[[redirects]]
+  from   = "/api/*"
+  to     = "/api/:splat"
+  status = 200
+
+# ── Headers ───────────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/api/webhooks/*"
+  [headers.values]
+    # Stripe must be able to POST here without CSRF interference.
+    X-Robots-Tag = "noindex"

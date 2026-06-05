@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+// Use relative paths so the same code works locally (Next.js dev server)
+// and on Netlify (Route Handlers served from the same origin).
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api',
+  baseURL: '/api',
   withCredentials: true,
 });
 
@@ -28,10 +30,7 @@ api.interceptors.response.use(
         const stored = localStorage.getItem('ghostmd-auth');
         const refreshToken = stored ? JSON.parse(stored)?.state?.refreshToken : null;
         if (!refreshToken) throw new Error('No refresh token');
-        const { data } = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/auth/refresh`,
-          { refreshToken },
-        );
+        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
         const cur = localStorage.getItem('ghostmd-auth');
         if (cur) {
           const p = JSON.parse(cur);
