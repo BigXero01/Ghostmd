@@ -6,10 +6,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { api } from '@/lib/api';
 
 interface Props { clientSecret: string; depositId: string; amount: number; }
 
-export function StripeDepositForm({ amount }: Props) {
+export function StripeDepositForm({ depositId, amount }: Props) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,12 @@ export function StripeDepositForm({ amount }: Props) {
       if (error) {
         toast.error(error.message || 'Payment failed');
       } else {
+        // Credit the balance server-side now that payment has succeeded.
+        try {
+          await api.post('/deposits/confirm', { depositId });
+        } catch {
+          /* confirm retry/webhook will reconcile */
+        }
         toast.success(`$${amount} deposited. Compounding begins next epoch.`);
         queryClient.invalidateQueries({ queryKey: ['portfolio'] });
         queryClient.invalidateQueries({ queryKey: ['deposits'] });

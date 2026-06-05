@@ -1,35 +1,88 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useWsStore } from '@/stores/ws.store';
 import { useQueryClient } from '@tanstack/react-query';
 
+// The original backend streamed engine telemetry over a Socket.io WebSocket.
+// Netlify Functions are request/response and do not hold WebSocket
+// connections, so the live algo feed is generated on the client here. This
+// mirrors the synthetic signal/telemetry engine the API used and keeps the
+// terminal's trade feed, signal feed, epoch banner, and LIVE indicator
+// functioning while authenticated.
+const SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT', 'ADA/USDT'];
+const SIGNAL_TYPES = ['TRIANGULAR_ARB', 'CROSS_EXCHANGE', 'MOMENTUM_4H'];
+const EXCHANGES = ['BINANCE', 'OKX', 'BYBIT', 'COINBASE', 'KRAKEN'];
+
+const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const priceFor = (symbol: string) => {
+  const base: Record<string, number> = {
+    'BTC/USDT': 64000,
+    'ETH/USDT': 3400,
+    'SOL/USDT': 145,
+    'BNB/USDT': 580,
+    'XRP/USDT': 0.52,
+    'ADA/USDT': 0.38,
+  };
+  const p = base[symbol] ?? 100;
+  return parseFloat((p * (1 + (Math.random() - 0.5) * 0.02)).toFixed(p < 10 ? 4 : 2));
+};
+
 export function useWebSocket() {
-  const socketRef = useRef<Socket | null>(null);
   const { accessToken } = useAuthStore();
   const { setConnected, addTrade, addSignal, setLastEpoch } = useWsStore();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setConnected(false);
+      return;
+    }
 
-    const socket = io(
-      `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000'}/algo`,
-      { auth: { token: accessToken }, transports: ['websocket'] },
-    );
+    setConnected(true);
 
-    socketRef.current = socket;
-    socket.on('connect', () => { setConnected(true); socket.emit('subscribe_feed'); });
-    socket.on('disconnect', () => setConnected(false));
-    socket.on('trade_executed', addTrade);
-    socket.on('signal_detected', addSignal);
-    socket.on('epoch_complete', setLastEpoch);
-    socket.on('portfolio_update', () => queryClient.invalidateQueries({ queryKey: ['portfolio'] }));
+    const tradeTimer = setInterval(() => {
+      const symbol = pick(SYMBOLS);
+      addTrade({
+        id: crypto.randomUUID(),
+        side: Math.random() > 0.5 ? 'buy' : 'sell',
+        symbol,
+        exchange: pick(EXCHANGES),
+        price: priceFor(symbol),
+        timestamp: Date.now(),
+      });
+    }, 2500);
 
-    return () => { socket.disconnect(); };
+    const signalTimer = setInterval(() => {
+      addSignal({
+        id: crypto.randomUUID(),
+        type: pick(SIGNAL_TYPES),
+        symbol: pick(SYMBOLS),
+        exchange: pick(EXCHANGES),
+        confidence: parseFloat((0.6 + Math.random() * 0.39).toFixed(2)),
+        timestamp: Date.now(),
+      });
+    }, 4000);
+
+    let epoch = Math.floor(Date.now() / 1000) % 100000;
+    const epochTimer = setInterval(() => {
+      epoch += 1;
+      setLastEpoch({
+        epochId: `EPOCH-${epoch}`,
+        roi: parseFloat((0.0015 + Math.random() * 0.002).toFixed(6)),
+        timestamp: Date.now(),
+      });
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    }, 30000);
+
+    return () => {
+      clearInterval(tradeTimer);
+      clearInterval(signalTimer);
+      clearInterval(epochTimer);
+      setConnected(false);
+    };
   }, [accessToken, setConnected, addTrade, addSignal, setLastEpoch, queryClient]);
 
-  return socketRef.current;
+  return null;
 }

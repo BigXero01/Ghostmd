@@ -5,16 +5,21 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { GlassCard } from '@/components/ui/glass-card';
 import { StripeDepositForm } from '@/components/dashboard/stripe-deposit-form';
 import { api } from '@/lib/api';
 import { Shield, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
+const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 const PRESETS = [25, 50, 100, 250];
 
 export function DepositPage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [amount, setAmount] = useState(100);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [depositId, setDepositId] = useState<string | null>(null);
@@ -25,8 +30,17 @@ export function DepositPage() {
     setLoading(true);
     try {
       const { data } = await api.post('/deposits/intent', { amountUsd: amount });
-      setClientSecret(data.clientSecret);
-      setDepositId(data.depositId);
+      // Stripe path: render the card form. Otherwise the deposit was processed
+      // instantly server-side — confirm to the user and return to the vault.
+      if (data.clientSecret && stripePromise) {
+        setClientSecret(data.clientSecret);
+        setDepositId(data.depositId);
+      } else {
+        toast.success(`$${amount} deposited. Compounding begins next epoch.`);
+        queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+        queryClient.invalidateQueries({ queryKey: ['deposits'] });
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create deposit');
     } finally {

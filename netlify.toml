@@ -1,0 +1,11 @@
+[build]
+  # Force a clean, deterministic dependency install before building.
+  #
+  # The Netlify "Build command" runs `turbo run build` only and depends on the
+  # dependency-install step / cached node_modules. A partially-cached node_modules
+  # (e.g. an empty apps/web/node_modules/next directory) makes npm consider `next`
+  # already installed and skip relinking its binary, producing `sh: next: not found`.
+  #
+  # `npm ci` removes node_modules entirely and reinstalls from the committed
+  # package-lock.json, guaranteeing the `next` binary is present for `next build`.
+  command = "npm ci && turbo run build --filter @ghostmd/web"
