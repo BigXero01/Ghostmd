@@ -6,5 +6,11 @@
   command = "npm install && turbo run build --filter @ghostmd/web"
   publish = "apps/web/.next"
 
+# Serverless auth backend (netlify/functions/auth.mts) backed by Netlify
+# Database. Serves the frontend's /api/auth/* calls on the Netlify deployment,
+# where the standalone NestJS API server is not available.
+[functions]
+  directory = "netlify/functions"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
