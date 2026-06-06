@@ -1,0 +1,5 @@
+# Explicitly declare the Next.js build plugin so Netlify installs a clean copy
+# from npm (config origin) instead of relying on the auto-detected default-origin
+# copy, which was failing to resolve its "manifest.yml" during plugin installation.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

@@ -13,6 +13,12 @@ enum KycStatus {
   REJECTED
 }
 
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  APPLE
+}
+
 enum DepositStatus {
   PENDING
   PROCESSING
@@ -32,9 +38,12 @@ enum WithdrawalStatus {
 model User {
   id           String      @id @default(uuid())
   email        String      @unique
-  passwordHash String
+  passwordHash String?
   firstName    String
   lastName     String
+  provider     AuthProvider @default(LOCAL)
+  providerId   String?
+  avatarUrl    String?
   kycStatus    KycStatus   @default(PENDING)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -43,6 +52,8 @@ model User {
   portfolio    Portfolio?
   sessions     Session[]
   passwordResets PasswordReset[]
+
+  @@unique([provider, providerId])
 }
 
 model Portfolio {

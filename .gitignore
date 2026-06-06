@@ -9,6 +9,9 @@ dist/
 build/
 out/
 
+# Netlify build-time internal directories (auto-generated)
+.netlify/
+
 # Turbo
 .turbo/
 
