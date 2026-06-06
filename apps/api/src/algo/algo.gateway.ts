@@ -13,11 +13,14 @@ import { TelemetryService } from './telemetry.service';
 
 @WebSocketGateway({
   namespace: '/algo',
-  cors: { origin: '*', credentials: true },
+  cors: {
+    origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    credentials: true,
+  },
 })
 export class AlgoGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   constructor(
     private jwtService: JwtService,

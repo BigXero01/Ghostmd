@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-interface RiskMetrics {
+export interface RiskMetrics {
   currentDrawdown: number;
   maxDrawdown: number;
   leverage: number;

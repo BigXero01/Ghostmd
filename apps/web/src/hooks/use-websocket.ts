@@ -1,35 +1,66 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/stores/auth.store';
 import { useWsStore } from '@/stores/ws.store';
 import { useQueryClient } from '@tanstack/react-query';
 
+// Polls /api/algo/feed every 5 seconds instead of maintaining a persistent
+// Socket.io connection, which is incompatible with Netlify's serverless model.
+// The cursor tracks the last-seen event so only new events are fetched.
 export function useWebSocket() {
-  const socketRef = useRef<Socket | null>(null);
   const { accessToken } = useAuthStore();
   const { setConnected, addTrade, addSignal, setLastEpoch } = useWsStore();
   const queryClient = useQueryClient();
+  const cursorRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setConnected(false);
+      return;
+    }
 
-    const socket = io(
-      `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000'}/algo`,
-      { auth: { token: accessToken }, transports: ['websocket'] },
-    );
+    setConnected(true);
 
-    socketRef.current = socket;
-    socket.on('connect', () => { setConnected(true); socket.emit('subscribe_feed'); });
-    socket.on('disconnect', () => setConnected(false));
-    socket.on('trade_executed', addTrade);
-    socket.on('signal_detected', addSignal);
-    socket.on('epoch_complete', setLastEpoch);
-    socket.on('portfolio_update', () => queryClient.invalidateQueries({ queryKey: ['portfolio'] }));
+    const poll = async () => {
+      try {
+        const url = cursorRef.current
+          ? `/api/algo/feed?since=${encodeURIComponent(cursorRef.current)}`
+          : '/api/algo/feed';
 
-    return () => { socket.disconnect(); };
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (!res.ok) return;
+
+        const { events, cursor } = (await res.json()) as {
+          events: Array<{ type: string; data: unknown }>;
+          cursor: string | null;
+        };
+
+        if (cursor) cursorRef.current = cursor;
+
+        for (const ev of events) {
+          if (ev.type === 'trade') addTrade(ev.data);
+          else if (ev.type === 'signal') addSignal(ev.data);
+          else if (ev.type === 'epoch') {
+            setLastEpoch(ev.data);
+            queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+          }
+        }
+      } catch {
+        // Silently continue on network errors; connection stays "live" from
+        // the user's perspective — the terminal just stops updating.
+      }
+    };
+
+    poll();
+    const id = setInterval(poll, 5000);
+
+    return () => {
+      clearInterval(id);
+      setConnected(false);
+    };
   }, [accessToken, setConnected, addTrade, addSignal, setLastEpoch, queryClient]);
-
-  return socketRef.current;
 }

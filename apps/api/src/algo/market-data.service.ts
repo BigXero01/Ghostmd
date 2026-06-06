@@ -1,20 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-
-interface OhlcvBar {
-  timestamp: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
 
 @Injectable()
 export class MarketDataService implements OnModuleInit {
   private prices: Map<string, number> = new Map();
-
-  constructor(private config: ConfigService) {}
 
   onModuleInit() {
     this.startSimulatedFeed();

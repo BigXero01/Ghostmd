@@ -1,0 +1,106 @@
+# ── GhostMD — Phantom Markets Division ────────────────────────────────────────
+# Serverless deployment on Netlify. The NestJS API (apps/api) is not deployed;
+# all backend logic runs in Next.js Route Handlers and Netlify Scheduled
+# Functions. Prisma connects to a managed Postgres (Neon / Supabase).
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Build ──────────────────────────────────────────────────────────────────────
+[build]
+  # Install from the monorepo root so all npm-workspace packages resolve
+  # correctly (packages/types, packages/utils), then generate the Prisma
+  # client and build the Next.js app.
+  command = "npm ci && cd apps/web && npx prisma generate && npx next build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NODE_ENV     = "production"
+
+# ── Next.js plugin ─────────────────────────────────────────────────────────────
+# Handles ISR revalidation, Image Optimisation, streaming SSR, and Edge
+# Middleware on Netlify. Pinned in apps/web/package.json devDependencies.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ── Netlify Functions ──────────────────────────────────────────────────────────
+[functions]
+  directory    = "apps/web/netlify/functions"
+  node_bundler = "esbuild"
+  # Prisma generates a platform-specific query-engine binary at install time.
+  # Include both possible locations so esbuild does not strip it.
+  included_files = [
+    "node_modules/.prisma/client/**",
+    "apps/web/node_modules/.prisma/client/**",
+  ]
+
+# ── Scheduled Functions ────────────────────────────────────────────────────────
+# compound-epoch – applies ROI to every portfolio with a non-zero balance.
+#                  Mirrors @Cron('0 */6 * * *') from the former NestJS service.
+[[scheduled-functions]]
+  name     = "compound-epoch"
+  schedule = "0 */6 * * *"
+
+# algo-tick – emits synthetic trade/signal events every minute so that the
+#             cursor-based polling feed at /api/algo/feed always has fresh data.
+[[scheduled-functions]]
+  name     = "algo-tick"
+  schedule = "* * * * *"
+
+# ── Deploy Contexts ────────────────────────────────────────────────────────────
+# Stated explicitly so Netlify does not fall back to auto-detected defaults.
+[context.production]
+  command = "npm ci && cd apps/web && npx prisma generate && npx next build"
+
+# Deploy previews should use Stripe test-mode keys and a separate DB —
+# configure those in the Netlify UI under "Deploy preview" environment.
+[context.deploy-preview]
+  command = "npm ci && cd apps/web && npx prisma generate && npx next build"
+
+[context.branch-deploy]
+  command = "npm ci && cd apps/web && npx prisma generate && npx next build"
+
+# ── Security Headers ───────────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Prevent clickjacking.
+    X-Frame-Options           = "DENY"
+    # Prevent MIME-type sniffing.
+    X-Content-Type-Options    = "nosniff"
+    # Control cross-origin referrer leak.
+    Referrer-Policy           = "strict-origin-when-cross-origin"
+    # Restrict unused browser APIs.
+    Permissions-Policy        = "camera=(), microphone=(), geolocation=(), payment=(self)"
+    # Force HTTPS for 2 years; include subdomains in the HSTS preload list.
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    # Content-Security-Policy:
+    #   • script-src includes Stripe.js (required for the payment iframe).
+    #   • Tighten 'unsafe-inline'/'unsafe-eval' once a nonce solution is added.
+    Content-Security-Policy   = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.stripe.com https://js.stripe.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+
+# Webhook: Stripe POSTs raw bytes — never cache, never index.
+[[headers]]
+  for = "/api/webhooks/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache"
+    X-Robots-Tag  = "noindex, nofollow"
+
+# Auth endpoints must never be served from a cache.
+[[headers]]
+  for = "/api/auth/*"
+  [headers.values]
+    Cache-Control = "no-store"
+
+# ── Cache Headers ──────────────────────────────────────────────────────────────
+# Next.js content-hashes every static chunk — safe to cache for a full year.
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Public assets (favicons, og-images, manifests) — shorter TTL so they can be
+# refreshed without a full redeploy.
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=3600"

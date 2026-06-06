@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum DepositStatus {
+  PENDING
+  PROCESSING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  APPROVED
+  PROCESSING
+  PAID
+  REJECTED
+}
+
+model User {
+  id             String          @id @default(uuid())
+  email          String          @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  kycStatus      KycStatus       @default(PENDING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deposits       Deposit[]
+  withdrawals    Withdrawal[]
+  portfolio      Portfolio?
+  sessions       Session[]
+  passwordResets PasswordReset[]
+}
+
+model Portfolio {
+  id             String              @id @default(uuid())
+  userId         String              @unique
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance        Decimal             @default(0) @db.Decimal(18, 8)
+  totalDeposited Decimal             @default(0) @db.Decimal(18, 8)
+  totalEarnings  Decimal             @default(0) @db.Decimal(18, 8)
+  lastCompounded DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  snapshots      PortfolioSnapshot[]
+}
+
+model PortfolioSnapshot {
+  id          String    @id @default(uuid())
+  portfolioId String
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  balance     Decimal   @db.Decimal(18, 8)
+  snapshotAt  DateTime  @default(now())
+
+  @@index([portfolioId, snapshotAt])
+}
+
+model Deposit {
+  id                    String        @id @default(uuid())
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripePaymentIntentId String        @unique
+  amountUsd             Decimal       @db.Decimal(10, 2)
+  status                DepositStatus @default(PENDING)
+  confirmedAt           DateTime?
+  createdAt             DateTime      @default(now())
+
+  @@index([userId])
+  @@index([stripePaymentIntentId])
+}
+
+model Withdrawal {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountUsd   Decimal          @db.Decimal(10, 2)
+  status      WithdrawalStatus @default(REQUESTED)
+  processedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([refreshToken])
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
+
+// Persisted algo engine events — replaces Socket.io push with DB-backed polling.
+// algo-tick scheduled function writes here every minute; /api/algo/feed reads since a cursor.
+model AlgoEvent {
+  id        String   @id @default(uuid())
+  type      String   // 'trade' | 'signal' | 'epoch'
+  symbol    String?
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+}
+
+// One row per 6-hour compounding run.
+model EpochLog {
+  id        String   @id @default(uuid())
+  epochId   String   @unique
+  roi       Float
+  succeeded Int
+  failed    Int
+  createdAt DateTime @default(now())
+}

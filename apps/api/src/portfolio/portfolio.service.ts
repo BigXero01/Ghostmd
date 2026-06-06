@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 const EPOCH_ROI = 0.0025;
@@ -65,7 +66,7 @@ export class PortfolioService {
   }
 
   async applyEpochRoi(portfolioId: string, roi: number) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const portfolio = await tx.portfolio.findUnique({ where: { id: portfolioId } });
       if (!portfolio) return;
 
