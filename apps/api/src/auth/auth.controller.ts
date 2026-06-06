@@ -13,6 +13,8 @@ import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
+import { AppleLoginDto } from './dto/apple-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -28,6 +30,18 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(@Request() req: any) {
     return this.authService.login(req.user);
+  }
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  async google(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleLogin(dto);
+  }
+
+  @Post('apple')
+  @HttpCode(HttpStatus.OK)
+  async apple(@Body() dto: AppleLoginDto) {
+    return this.authService.appleLogin(dto);
   }
 
   @Post('refresh')

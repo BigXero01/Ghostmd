@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { GlassCard } from '@/components/ui/glass-card';
+import { SocialAuthButtons } from '@/components/auth/social-auth-buttons';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -65,6 +66,7 @@ export function LoginForm() {
             {isSubmitting ? 'AUTHENTICATING...' : 'ENTER VAULT'}
           </button>
         </form>
+        <SocialAuthButtons />
         <p className="text-center text-bone/30 text-sm mt-6 font-mono">
           No vault?{' '}<Link href="/auth/register" className="text-purple hover:text-purple/80 transition-colors">Create one</Link>
         </p>
