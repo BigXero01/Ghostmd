@@ -13,6 +13,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
 
+// A precomputed bcrypt digest of an arbitrary string, used solely to spend a
+// comparable amount of CPU time when authenticating a non-existent account.
+const DUMMY_PASSWORD_HASH = '$2a$12$yvV1JRilzKTAjEfvxl.wnuZuwyapVEV6aH.Pikx1F7h/JAsh.Tpdu';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -43,7 +47,14 @@ export class AuthService {
 
   async validateUser(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) return null;
+    if (!user) {
+      // Perform a dummy hash comparison against a fixed bcrypt digest so the
+      // response time for an unknown email matches that of a known one. Without
+      // this, the early return leaks account existence via a timing side channel
+      // (user enumeration).
+      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+      return null;
+    }
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return null;
     return { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, kycStatus: user.kycStatus };
@@ -93,6 +104,11 @@ export class AuthService {
     await this.prisma.$transaction([
       this.prisma.user.update({ where: { id: reset.userId }, data: { passwordHash } }),
       this.prisma.passwordReset.update({ where: { id: reset.id }, data: { used: true } }),
+      // Revoke every active refresh-token session for the account. A password
+      // reset is the primary account-recovery path after a compromise; if
+      // existing sessions survived, an attacker holding a stolen refresh token
+      // would retain access despite the password change.
+      this.prisma.session.deleteMany({ where: { userId: reset.userId } }),
     ]);
   }
 

@@ -54,36 +54,29 @@ export class PortfolioService {
     return projections;
   }
 
-  async creditBalance(userId: string, amountUsd: number) {
-    return this.prisma.portfolio.update({
-      where: { userId },
-      data: {
-        balance: { increment: amountUsd },
-        totalDeposited: { increment: amountUsd },
-      },
-    });
-  }
-
   async applyEpochRoi(portfolioId: string, roi: number) {
     return this.prisma.$transaction(async (tx) => {
       const portfolio = await tx.portfolio.findUnique({ where: { id: portfolioId } });
       if (!portfolio) return;
 
-      const currentBalance = parseFloat(portfolio.balance.toString());
-      const earnings = currentBalance * roi;
-      const newBalance = currentBalance + earnings;
+      // Compute earnings in Decimal space to preserve the 8-dp precision of the
+      // balance column; performing the math in JS floats would silently corrupt
+      // ledger values. Apply the gain with an atomic `increment` rather than
+      // writing an absolute balance, so a deposit credited concurrently during
+      // the epoch run is not clobbered (lost-update).
+      const earnings = portfolio.balance.mul(roi);
 
-      await tx.portfolio.update({
+      const updated = await tx.portfolio.update({
         where: { id: portfolioId },
         data: {
-          balance: newBalance,
+          balance: { increment: earnings },
           totalEarnings: { increment: earnings },
           lastCompounded: new Date(),
         },
       });
 
       await tx.portfolioSnapshot.create({
-        data: { portfolioId, balance: newBalance },
+        data: { portfolioId, balance: updated.balance },
       });
     });
   }
