@@ -1,0 +1,90 @@
+functionsDirectory = "/opt/build/repo/apps/web/netlify/functions"
+functionsDirectoryOrigin = "config"
+headersOrigin = "config"
+redirects = []
+
+[build]
+publish = "/opt/build/repo/apps/web/.next"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "npm ci --include=dev && cd apps/web && npx prisma generate && npx next build"
+functions = "/opt/build/repo/apps/web/netlify/functions"
+
+[build.environment]
+NODE_VERSION = "20"
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[[scheduled-functions]]
+name = "compound-epoch"
+schedule = "0 */6 * * *"
+
+[[scheduled-functions]]
+name = "algo-tick"
+schedule = "* * * * *"
+
+[functions]
+
+[functions."*"]
+included_files = ["node_modules/.prisma/client/**", "apps/web/node_modules/.prisma/client/**"]
+node_bundler = "esbuild"
+
+[[plugins]]
+origin = "config"
+package = "@netlify/plugin-nextjs"
+pinned_version = "5"
+
+[plugins.inputs]
+
+[[plugins]]
+origin = "ui"
+package = "@netlify/plugin-lighthouse"
+pinned_version = "6"
+
+[plugins.inputs]
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+X-Frame-Options = "DENY"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(self)"
+Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.stripe.com https://js.stripe.com; frame-src https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+
+[[headers]]
+for = "/api/webhooks/*"
+
+[headers.values]
+Cache-Control = "no-store, no-cache"
+X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+for = "/api/auth/*"
+
+[headers.values]
+Cache-Control = "no-store"
+
+[[headers]]
+for = "/_next/static/*"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/static/*"
+
+[headers.values]
+Cache-Control = "public, max-age=86400, stale-while-revalidate=3600"

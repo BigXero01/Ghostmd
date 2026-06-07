@@ -1,14 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Ghost, LayoutDashboard, Terminal, Settings, LogOut } from 'lucide-react';
+import { Ghost, LayoutDashboard, Terminal, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import { useWsStore } from '@/stores/ws.store';
-import { api } from '@/lib/api';
-import { toast } from 'sonner';
 
 const NAV_LINKS = [
   { href: '/dashboard', label: 'VAULT', icon: LayoutDashboard },
@@ -18,16 +16,8 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user, logout, refreshToken } = useAuthStore();
+  const { user } = useAuthStore();
   const { connected } = useWsStore();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    try { await api.post('/auth/logout', { refreshToken }); } catch {}
-    logout();
-    router.push('/');
-    toast.success('Disconnected from the phantom network');
-  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-40 bg-surface/90 backdrop-blur-lg border-b border-purple/20">
@@ -62,11 +52,6 @@ export function Navbar() {
                 animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
               LIVE
             </div>
-          )}
-          {user && (
-            <button onClick={handleLogout} className="flex items-center gap-2 text-xs text-bone/40 hover:text-red transition-colors">
-              <LogOut className="w-4 h-4" />
-            </button>
           )}
         </div>
       </div>

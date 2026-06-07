@@ -37,8 +37,7 @@ export function LandingPage() {
             <span className="font-display text-xl text-purple text-glow-purple tracking-wider">GHOST<span className="text-bone/60">MD</span></span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/auth/login" className="btn-ghost text-sm py-2 px-4">LOG IN</Link>
-            <Link href="/auth/register" className="btn-primary text-sm py-2 px-4">OPEN VAULT</Link>
+            <Link href="/dashboard" className="btn-primary text-sm py-2 px-4">ENTER VAULT</Link>
           </div>
         </div>
       </nav>
@@ -55,7 +54,7 @@ export function LandingPage() {
             Algorithmic crypto trading that operates in the shadows. Your capital compounds every 6 hours through multi-exchange arbitrage and momentum strategies.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <Link href="/auth/register" className="btn-primary text-base px-8 py-4">ENTER THE VAULT</Link>
+            <Link href="/dashboard" className="btn-primary text-base px-8 py-4">ENTER THE VAULT</Link>
             <Link href="#how-it-works" className="btn-ghost text-base px-8 py-4">HOW IT WORKS</Link>
           </div>
         </motion.div>
