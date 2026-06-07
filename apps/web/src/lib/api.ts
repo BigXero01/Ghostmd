@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { ensureGuestSession } from './guest';
 
 // Use relative paths so the same code works locally (Next.js dev server)
 // and on Netlify (Route Handlers served from the same origin).
@@ -41,8 +42,17 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
       } catch {
-        localStorage.removeItem('ghostmd-auth');
-        if (typeof window !== 'undefined') window.location.href = '/auth/login';
+        // Open access: the session expired or is invalid, so provision a fresh
+        // guest vault and retry instead of forcing the user to a login screen.
+        try {
+          await ensureGuestSession(true);
+          const stored = localStorage.getItem('ghostmd-auth');
+          const token = stored ? JSON.parse(stored)?.state?.accessToken : null;
+          if (token) {
+            original.headers.Authorization = `Bearer ${token}`;
+            return api(original);
+          }
+        } catch {}
         return Promise.reject(error);
       }
     }

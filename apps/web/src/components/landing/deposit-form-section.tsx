@@ -26,7 +26,7 @@ export function DepositFormSection() {
       <input type="number" placeholder="Custom amount ($25 min)" value={amount}
         onChange={(e) => setAmount(parseFloat(e.target.value) || 25)}
         className="input-ghost mb-4" min={25} />
-      <Link href="/auth/register" className="btn-primary w-full flex items-center justify-center gap-2">
+      <Link href="/dashboard/deposit" className="btn-primary w-full flex items-center justify-center gap-2">
         START COMPOUNDING <ArrowRight className="w-4 h-4" />
       </Link>
       <div className="flex items-center gap-2 mt-4 text-bone/30 text-xs font-mono justify-center">

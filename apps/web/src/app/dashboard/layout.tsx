@@ -1,24 +1,31 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/layout/navbar';
 import { ScanlineOverlay } from '@/components/layout/scanline';
 import { useAuthStore } from '@/stores/auth.store';
 import { useWebSocket } from '@/hooks/use-websocket';
+import { ensureGuestSession } from '@/lib/guest';
+import { Ghost } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const { isAuthenticated } = useAuthStore();
+  const [ready, setReady] = useState(false);
   useWebSocket();
 
+  // Free, open access: ensure a session exists (provisioning a guest vault on
+  // first visit) rather than gating the dashboard behind a login screen.
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/auth/login');
-    }
-  }, [isAuthenticated, router]);
+    ensureGuestSession().finally(() => setReady(true));
+  }, []);
 
-  if (!isAuthenticated()) return null;
+  if (!isAuthenticated() && !ready) {
+    return (
+      <div className="min-h-screen bg-ink dot-grid-bg flex items-center justify-center">
+        <Ghost className="w-8 h-8 text-purple animate-pulse-glow" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-ink dot-grid-bg">
