@@ -5,7 +5,7 @@ const nextConfig = {
   experimental: {
     // Prisma and bcryptjs use native binaries — keep them out of the webpack
     // bundle so Node.js loads them at runtime from node_modules.
-    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
+    serverComponentsExternalPackages: ['@prisma/client'],
   },
   images: {
     domains: [],

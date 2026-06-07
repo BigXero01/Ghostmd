@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { verifyAuth } from '@/lib/auth';
+import { DEMO_USER_ID } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe-server';
 
 const schema = z.object({
@@ -9,9 +9,6 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const user = await verifyAuth(req);
-  if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-
   let body: unknown;
   try {
     body = await req.json();
@@ -31,12 +28,12 @@ export async function POST(req: NextRequest) {
     amount: Math.round(amountUsd * 100),
     currency: 'usd',
     automatic_payment_methods: { enabled: true },
-    metadata: { userId: user.sub },
+    metadata: { userId: DEMO_USER_ID },
   });
 
   const deposit = await prisma.deposit.create({
     data: {
-      userId: user.sub,
+      userId: DEMO_USER_ID,
       stripePaymentIntentId: paymentIntent.id,
       amountUsd,
       status: 'PENDING',

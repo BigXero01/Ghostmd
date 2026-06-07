@@ -1,25 +1,17 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useAuthStore } from '@/stores/auth.store';
 import { useWsStore } from '@/stores/ws.store';
 import { useQueryClient } from '@tanstack/react-query';
 
-// Polls /api/algo/feed every 5 seconds instead of maintaining a persistent
-// Socket.io connection, which is incompatible with Netlify's serverless model.
-// The cursor tracks the last-seen event so only new events are fetched.
+// Polls /api/algo/feed every 5 seconds. The cursor tracks the last-seen event
+// so only new events are fetched on each tick.
 export function useWebSocket() {
-  const { accessToken } = useAuthStore();
   const { setConnected, addTrade, addSignal, setLastEpoch } = useWsStore();
   const queryClient = useQueryClient();
   const cursorRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!accessToken) {
-      setConnected(false);
-      return;
-    }
-
     setConnected(true);
 
     const poll = async () => {
@@ -28,10 +20,7 @@ export function useWebSocket() {
           ? `/api/algo/feed?since=${encodeURIComponent(cursorRef.current)}`
           : '/api/algo/feed';
 
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-
+        const res = await fetch(url);
         if (!res.ok) return;
 
         const { events, cursor } = (await res.json()) as {
@@ -50,8 +39,7 @@ export function useWebSocket() {
           }
         }
       } catch {
-        // Silently continue on network errors; connection stays "live" from
-        // the user's perspective — the terminal just stops updating.
+        // Silently continue on network errors.
       }
     };
 
@@ -62,5 +50,5 @@ export function useWebSocket() {
       clearInterval(id);
       setConnected(false);
     };
-  }, [accessToken, setConnected, addTrade, addSignal, setLastEpoch, queryClient]);
+  }, [setConnected, addTrade, addSignal, setLastEpoch, queryClient]);
 }

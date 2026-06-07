@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { verifyAuth } from '@/lib/auth';
+import { DEMO_USER_ID } from '@/lib/auth';
 import { getStripe } from '@/lib/stripe-server';
 import { processConfirmedDeposit } from '@/lib/deposit-helpers';
 
 const schema = z.object({ paymentIntentId: z.string() });
 
 export async function POST(req: NextRequest) {
-  const user = await verifyAuth(req);
-  if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-
   let body: unknown;
   try {
     body = await req.json();
@@ -27,7 +24,7 @@ export async function POST(req: NextRequest) {
     where: { stripePaymentIntentId: parsed.data.paymentIntentId },
   });
 
-  if (!deposit || deposit.userId !== user.sub) {
+  if (!deposit || deposit.userId !== DEMO_USER_ID) {
     return NextResponse.json({ message: 'Deposit not found' }, { status: 404 });
   }
 
