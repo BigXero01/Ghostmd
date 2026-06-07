@@ -9,18 +9,25 @@
   # Install from the monorepo root so all npm-workspace packages resolve
   # correctly (packages/types, packages/utils), then generate the Prisma
   # client and build the Next.js app.
-  command = "npm ci && cd apps/web && npx prisma generate && npx next build"
+  # `--include=dev` is required because NODE_ENV=production would otherwise
+  # make npm omit devDependencies — but the Next.js build needs build-time
+  # tooling that lives there (tailwindcss, postcss, autoprefixer, typescript,
+  # eslint-config-next, prisma).
+  command = "npm ci --include=dev && cd apps/web && npx prisma generate && npx next build"
   publish = "apps/web/.next"
 
 [build.environment]
   NODE_VERSION = "20"
   NODE_ENV     = "production"
 
-# ── Next.js plugin ─────────────────────────────────────────────────────────────
-# Handles ISR revalidation, Image Optimisation, streaming SSR, and Edge
-# Middleware on Netlify. Pinned in apps/web/package.json devDependencies.
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# ── Next.js Runtime ────────────────────────────────────────────────────────────
+# The Next.js Runtime (@netlify/plugin-nextjs v5) handles ISR revalidation,
+# Image Optimisation, streaming SSR, and Edge Middleware. Netlify auto-detects
+# the Next.js app and installs the runtime automatically, so it is intentionally
+# NOT declared here and NOT listed as a project dependency. Declaring it as a
+# [[plugins]] entry (or installing it via package.json) makes Netlify load the
+# npm package as a classic build plugin, which fails because the v5 runtime ships
+# no "manifest.yml".
 
 # ── Netlify Functions ──────────────────────────────────────────────────────────
 [functions]
@@ -49,15 +56,15 @@
 # ── Deploy Contexts ────────────────────────────────────────────────────────────
 # Stated explicitly so Netlify does not fall back to auto-detected defaults.
 [context.production]
-  command = "npm ci && cd apps/web && npx prisma generate && npx next build"
+  command = "npm ci --include=dev && cd apps/web && npx prisma generate && npx next build"
 
 # Deploy previews should use Stripe test-mode keys and a separate DB —
 # configure those in the Netlify UI under "Deploy preview" environment.
 [context.deploy-preview]
-  command = "npm ci && cd apps/web && npx prisma generate && npx next build"
+  command = "npm ci --include=dev && cd apps/web && npx prisma generate && npx next build"
 
 [context.branch-deploy]
-  command = "npm ci && cd apps/web && npx prisma generate && npx next build"
+  command = "npm ci --include=dev && cd apps/web && npx prisma generate && npx next build"
 
 # ── Security Headers ───────────────────────────────────────────────────────────
 [[headers]]
